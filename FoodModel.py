@@ -200,10 +200,9 @@ class HouseAgent(mesa.Agent):
                 weights=[self.food_p,self.food_p_n])[0]
 
 def get_hunger(model):
-    return len([1 for agent in model.schedule.agents \
-        if isinstance(agent,CatAgent) and agent.is_hungry]) / \
-        len([1 for agent in model.schedule.agents \
-            if isinstance(agent,CatAgent)])
+    num_cats = len(model.cat_list)
+    return 0 if not num_cats else \
+        (len([1 for cat in model.cat_list if cat.is_hungry]) / num_cats)
 
 class_map = {
     "street" : StreetAgent,
@@ -215,13 +214,19 @@ class_map = {
 
 class FoodModel(mesa.Model):
     def __init__(self, num_cats, hunger_rate, width, height, house_willingness,
-        house_rate, sleep_rate, sleep_duration_rate, seed=1234):
+        house_rate, sleep_rate, sleep_duration_rate, cat_removal_rate=0,
+        seed=1234):
+        self.current_tick = 1 # Time tracking for policies
+        self.cat_removal_rate = cat_removal_rate
         self.current_id = 1
         self.num_cats = num_cats
 
         self.grid = mesa.space.MultiGrid(width, height, True)
 
         self.schedule = mesa.time.RandomActivation(self)
+
+        # Maintain a list of the cats - MUST be updated by reproduction
+        self.cat_list = []
 
         for i in range(self.num_cats):
             curr_a = CatAgent(self.next_id(), self, hunger_rate, sleep_rate,
@@ -230,6 +235,7 @@ class FoodModel(mesa.Model):
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
             self.grid.place_agent(curr_a, (x, y))
+            self.cat_list.append(curr_a)
 
         # GRID / ENVIRONMENTAL SETUP
         environment = get_locs(width, height)
@@ -259,6 +265,13 @@ class FoodModel(mesa.Model):
         """Advance the model by one step."""
         self.datacollector.collect(self)
         self.schedule.step()
+        self.current_tick += 1
+        if self.cat_removal_rate and \
+            ((self.current_tick % self.cat_removal_rate) == 0):
+            random_cat = self.random.choice(self.cat_list)
+            self.grid.remove_agent(random_cat)
+            self.schedule.remove(random_cat)
+            self.cat_list.remove(random_cat)
 
 def agent_portrayal(agent):
 
@@ -329,6 +342,9 @@ def agent_portrayal(agent):
 
 if __name__ == "__main__":
     model_parameters = {"width" : GRID_WIDTH, "height" : GRID_HEIGHT,
+        "cat_removal_rate" : mesa.visualization.Slider(
+            "Ticks until cat removal", value=0, min_value=0,
+            max_value=(30 * 24 * 60 / MINUTES_PER_TICK), step=1),
         "num_cats" : mesa.visualization.Slider(
             "Number of cats", value=10, min_value=1, max_value=100, step=1),
         "hunger_rate" : mesa.visualization.Slider(
