@@ -22,15 +22,45 @@ class RestaurantAgent(mesa.Agent):
 
 class CatAgent(mesa.Agent):
     # @param hunger_rate Rate in hours until hungry
-    def __init__(self, unique_id, model, hunger_rate):
+    def __init__(self, unique_id, model, hunger_rate, sleep_rate,
+        sleep_duration_rate):
         super().__init__(unique_id, model)
+        # FOOD
+        # Personal hunger rate (i.e. how often they become hungry)
         self.hunger_rate = np.random.poisson((hunger_rate * 60) / MINUTES_PER_TICK)
+        # Are they hungry now
         self.is_hungry = self.random.choices(
             [True, False], weights=[0.2,0.8])[0]
+        # Time until hungry (randomly generated, sampled with mean
+        # corresponding to their own personal hunger rate)
         self.ticks_until_hungry = 0 if self.is_hungry else \
             np.random.poisson(self.hunger_rate)
         self.found_food = None # Food zone (e.g. House)
         self.found_food_type = None # Food zone type (e.g. HouseAgent)
+
+        # SLEEP
+        # NOTE: Can revisit and add some tolerance for still searching for food
+        #       even if sleepy...
+        # Personal sleepy rate (i.e. how often they become sleepy)
+        self.sleepy_rate = 1 + np.random.poisson((sleep_rate * 60) / MINUTES_PER_TICK)
+        # Average time asleep (for all cats, not personalized)
+        self.sleep_duration_rate = ((sleep_duration_rate * 60) / MINUTES_PER_TICK)
+
+
+        print("SLEEPY RATE:", self.sleepy_rate)
+        print("SLEEP DURATION RATE:", self.sleep_duration_rate)
+
+        # Are they asleep right now
+        self.is_asleep = self.random.choices(
+            [True, False], weights=[0.2,0.8])[0]
+        # Are they sleepy now
+        self.is_sleepy = False if self.is_asleep else self.random.choices(
+            [True, False], weights=[0.2,0.8])[0]
+        # Time until sleepy (randomly generated, sampled with mean
+        # corresponding to their own personal sleepy rate)
+        self.ticks_until_sleepy = 0 if (self.is_sleepy or self.is_asleep) else np.random.poisson(self.sleepy_rate)
+        # Time until they wake up
+        self.ticks_until_awake = 0 if not self.is_asleep else np.random.poisson(self.sleep_duration_rate)
 
     def cat_encounter(self, other):
         pass
@@ -65,12 +95,28 @@ class CatAgent(mesa.Agent):
 
     # STATE TO UPDATE (currently):
     # - Hunger                      [X]
-    # - Need to sleep               [ ]
+    # - Need to sleep               [X]
     # - Pregnant (if female)        [ ]
     # - Injured                     [ ]
     # - Starved                     [ ]
     # Mostly captures change due to time
     def update_state(self):
+        if self.is_asleep: # The cat is asleep
+            self.ticks_until_awake -= 1 # Decrement time until awakened
+            if self.ticks_until_awake <= 0: # If wake up time
+                self.is_asleep = False # No longer asleep
+                self.is_sleepy = False # Not sleepy
+                # Generate time until sleepy
+                self.ticks_until_sleepy = np.random.poisson(self.sleepy_rate)
+        else: # The cat is awake
+            self.ticks_until_sleepy -= 1 # Decrement time until sleepy
+            if self.ticks_until_sleepy <= 0: # If sleep time
+                self.is_sleepy = True # Now sleepy
+                self.is_asleep = True # Now asleep (assuming sleepy = go to sleep)
+                # Generate how long until they are awakened
+                self.ticks_until_awake = np.random.poisson(self.sleep_duration_rate)
+
+
         # UPDATE THESE IF FOUND_FOOD SHOULD LIVE BEYOND 1 TICK
         self.found_food = None
         self.found_food_type = None
@@ -82,6 +128,7 @@ class CatAgent(mesa.Agent):
     # CAT PRIORITIES
     # Hunger                        [X]
     # Reproduce                     [ ]
+    # Sleep                         [X] (move does not get called)
     # Wander                        [ ]
     def move(self):
         if self.is_hungry:
@@ -89,7 +136,7 @@ class CatAgent(mesa.Agent):
 
             self.model.grid.move_agent(self, new_loc)
         # CHANGE
-        else:
+        else: # Wander
             self.model.grid.move_agent(self,
                 self.random.choice(self.model.grid.get_neighborhood(
                                    self.pos, 
@@ -118,11 +165,17 @@ class CatAgent(mesa.Agent):
         # Wandering?
 
     def step(self):
+        print("Is asleep:", self.is_asleep)
+        print("Is sleepy:", self.is_sleepy)
+        print("Ticks until sleepy:", self.ticks_until_sleepy)
+        print("Ticks until awake:", self.ticks_until_awake)
+
         #print("Cat: ", self.unique_id, " is hungry ", self.is_hungry, " at ",
         # self.pos)
         self.update_state()
-        self.move()
-        self.act()
+        if not self.is_asleep:
+            self.move()
+            self.act()
 
 
 class HouseAgent(mesa.Agent):
@@ -162,7 +215,7 @@ class_map = {
 
 class FoodModel(mesa.Model):
     def __init__(self, num_cats, hunger_rate, width, height, house_willingness,
-        house_rate, seed=1234):
+        house_rate, sleep_rate, sleep_duration_rate, seed=1234):
         self.current_id = 1
         self.num_cats = num_cats
 
@@ -171,7 +224,8 @@ class FoodModel(mesa.Model):
         self.schedule = mesa.time.RandomActivation(self)
 
         for i in range(self.num_cats):
-            curr_a = CatAgent(self.next_id(), self, hunger_rate)
+            curr_a = CatAgent(self.next_id(), self, hunger_rate, sleep_rate,
+                sleep_duration_rate)
             self.schedule.add(curr_a)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
@@ -280,6 +334,12 @@ if __name__ == "__main__":
         "hunger_rate" : mesa.visualization.Slider(
             "Cat hunger rate (hours)", value=6, min_value=1, max_value=10,
             step=1),
+        "sleep_rate" : mesa.visualization.Slider(
+            "Cat sleep rate (hours)", value=.75, min_value=.25, max_value=1.25,
+            step=.25),
+        "sleep_duration_rate" : mesa.visualization.Slider(
+            "Cat sleep duration (hours", value=1.5, min_value=1, max_value=2,
+            step=.25),
         "house_willingness" : mesa.visualization.Slider(
             "House willingness", value=0.2, min_value=0, max_value=1, step=0.1),
         "house_rate" : mesa.visualization.Slider(
