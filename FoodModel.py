@@ -9,6 +9,12 @@ GRID_HEIGHT = 24
 MINUTES_PER_TICK = 15
 # Ticks per average mouse arrival
 MAX_MOUSE_GROWTH_RATE = (48 * 60) / MINUTES_PER_TICK
+MATING_PROBABILITY = .8
+# Assumes all births in 60 days
+TICKS_UNTIL_BIRTH = (60 * 24 * 60) / MINUTES_PER_TICK
+TICKS_UNTIL_MATURE = (45 * 24 * 60 ) / MINUTES_PER_TICK
+KITTEN_LITTER_MIN = 2
+KITTEN_LITTER_MAX = 6
 
 class StreetAgent(mesa.Agent):
     pass
@@ -44,8 +50,13 @@ class RestaurantAgent(mesa.Agent):
 class CatAgent(mesa.Agent):
     # @param hunger_rate Rate in hours until hungry
     def __init__(self, unique_id, model, hunger_rate, sleep_rate,
-        sleep_duration_rate):
+        sleep_duration_rate, sex):
         super().__init__(unique_id, model)
+        self.sex = sex # Assume True=male,False=female
+        self.pregnant = False # Default all cats to not pregnant
+        self.ticks_until_birth = None
+        self.chosen_mate = None
+
         # FOOD
         # Personal hunger rate (i.e. how often they become hungry)
         self.hunger_rate = np.random.poisson((hunger_rate * 60) / MINUTES_PER_TICK)
@@ -91,7 +102,7 @@ class CatAgent(mesa.Agent):
     # Looking for food...
     # - Houses              [X]
     # - Birds               [ ]
-    # - Mice                [ ]
+    # - Mice                [X]
     def find_food(self):
         new_loc = None
         # Do a search of radius 1 for houses with food
@@ -120,7 +131,7 @@ class CatAgent(mesa.Agent):
     # STATE TO UPDATE (currently):
     # - Hunger                      [X]
     # - Need to sleep               [X]
-    # - Pregnant (if female)        [ ]
+    # - Pregnant (if female)        [X]
     # - Injured                     [ ]
     # - Starved                     [ ]
     # Mostly captures change due to time
@@ -148,17 +159,40 @@ class CatAgent(mesa.Agent):
         if self.ticks_until_hungry <= 0:
             self.is_hungry = True
 
+        # SAME IDEA FOR REPRODUCTION
+        self.chosen_mate = None
+        if self.ticks_until_birth is not None:
+            self.ticks_until_birth -= 1
+            # QUEUE UP KITTENS
+            if self.ticks_until_birth <= 0:
+                future_time = self.model.current_tick + TICKS_UNTIL_MATURE
+                num_kittens = self.random.choice(list(range(KITTEN_LITTER_MIN, 
+                            KITTEN_LITTER_MAX + 1)))
+                if future_time in self.model.kitten_queue:
+                    self.model.kitten_queue[future_time] += num_kittens
+                else: 
+                    self.model.kitten_queue[future_time] = num_kittens
+                self.ticks_until_birth = None
+                self.pregnant = False
+                #print("GAVE BIRTH")
+
     # Handles movement under...
     # CAT PRIORITIES
     # Hunger                        [X]
-    # Reproduce                     [ ]
+    # Reproduce                     [X]
     # Sleep                         [X] (move does not get called)
-    # Wander                        [ ]
+    # Wander                        [X]
     def move(self):
         if self.is_hungry:
             new_loc = self.find_food()
 
             self.model.grid.move_agent(self, new_loc)
+        elif (not self.pregnant) and (possible_mates := \
+            [a for a in self.model.grid.iter_neighbors(self.pos, True, True) \
+            if isinstance(a, CatAgent) and a.sex != self.sex and \
+                not a.pregnant]):
+            self.chosen_mate = self.random.choice(possible_mates)
+            self.model.grid.move_agent(self, self.chosen_mate.pos)
         # CHANGE
         else: # Wander
             self.model.grid.move_agent(self,
@@ -169,14 +203,28 @@ class CatAgent(mesa.Agent):
 
     # A CAT MAY
     # - Eat house food              [X]
-    # - Eat mice                    [ ]
+    # - Eat mice                    [X]
     # - Eat bird                    [ ]
     # - Fight                       [ ]
-    # - Reproduce                   [ ]
+    # - Reproduce                   [X]
     # - Killed by fight             [ ]
     # - Killed by car               [ ]
     def act(self):
         # Encountered other cat?
+    
+
+        # Came here to reproduce?
+        if self.chosen_mate is not None:
+            print("Moved to mate")
+            # Probabilistic mating
+            u = self.random.uniform(0, 1)
+            if (u < MATING_PROBABILITY):
+                if self.sex:
+                    self.chosen_mate.pregnant = True
+                    self.chosen_mate.ticks_until_birth = TICKS_UNTIL_BIRTH
+                else:
+                    self.pregnant = True
+                    self.ticks_until_birth = TICKS_UNTIL_BIRTH
 
         # Came here to eat? 
         if self.found_food:
@@ -200,10 +248,10 @@ class CatAgent(mesa.Agent):
         # Wandering?
 
     def step(self):
-        print("Is asleep:", self.is_asleep)
-        print("Is sleepy:", self.is_sleepy)
-        print("Ticks until sleepy:", self.ticks_until_sleepy)
-        print("Ticks until awake:", self.ticks_until_awake)
+        # print("Is asleep:", self.is_asleep)
+        # print("Is sleepy:", self.is_sleepy)
+        # print("Ticks until sleepy:", self.ticks_until_sleepy)
+        # print("Ticks until awake:", self.ticks_until_awake)
 
         #print("Cat: ", self.unique_id, " is hungry ", self.is_hungry, " at ",
         # self.pos)
@@ -223,7 +271,7 @@ class HouseAgent(mesa.Agent):
         #print(self.puts_food)
         if self.puts_food:
             self.food = True
-            self.rate = np.random.poisson(rate)
+            self.rate = 1 + np.random.poisson(rate)
             self.food_p = 1 / ((self.rate * 60) / MINUTES_PER_TICK)
             self.food_p_n = 1 - self.food_p
 
@@ -259,6 +307,9 @@ class FoodModel(mesa.Model):
         self.cat_removal_rate = ((cat_removal_rate * 60) / MINUTES_PER_TICK)
         self.current_id = 1
         self.num_cats = num_cats
+        self.hunger_rate = hunger_rate
+        self.sleep_rate = sleep_rate
+        self.sleep_duration_rate = sleep_duration_rate
 
         self.grid = mesa.space.MultiGrid(width, height, True)
 
@@ -267,10 +318,11 @@ class FoodModel(mesa.Model):
         # Maintain a list of the cats - MUST be updated by reproduction
         self.cat_list = []
         self.restaurant_list = []
+        self.kitten_queue = {}
 
         for i in range(self.num_cats):
             curr_a = CatAgent(self.next_id(), self, hunger_rate, sleep_rate,
-                sleep_duration_rate)
+                sleep_duration_rate, (i % 2 == 0))
             self.schedule.add(curr_a)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
@@ -317,6 +369,18 @@ class FoodModel(mesa.Model):
             self.grid.remove_agent(random_cat)
             self.schedule.remove(random_cat)
             self.cat_list.remove(random_cat)
+        #print(self.kitten_queue)
+        if self.current_tick in self.kitten_queue:
+            num_cats_to_add = self.kitten_queue[self.current_tick]
+            for i in range(num_cats_to_add):
+                curr_a = CatAgent(self.next_id(), self, self.hunger_rate,
+                    self.sleep_rate, self.sleep_duration_rate, (i % 2 == 0))
+                self.schedule.add(curr_a)
+                x = self.random.randrange(self.grid.width)
+                y = self.random.randrange(self.grid.height)
+                self.grid.place_agent(curr_a, (x, y))
+                self.cat_list.append(curr_a)
+        print(len(self.cat_list))
 
 def agent_portrayal(agent):
 
@@ -391,7 +455,7 @@ if __name__ == "__main__":
             "Hours until cat removal", value=0, min_value=0,
             max_value=(30 * 24), step=24),
         "num_cats" : mesa.visualization.Slider(
-            "Number of cats", value=10, min_value=1, max_value=100, step=1),
+            "Number of cats", value=10, min_value=2, max_value=100, step=2),
         "hunger_rate" : mesa.visualization.Slider(
             "Cat hunger rate (hours)", value=6, min_value=1, max_value=10,
             step=1),
