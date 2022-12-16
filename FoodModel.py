@@ -1,5 +1,7 @@
+import time
 import mesa
 import numpy as np
+import pandas as pd
 from Utilities import get_locs
 
 GRID_PIXEL_WIDTH = 1000
@@ -283,13 +285,14 @@ class HouseAgent(mesa.Agent):
                 weights=[self.food_p,self.food_p_n])[0]
 
 def get_hunger(model):
-    num_cats = len(model.cat_list)
-    return 0 if not num_cats else \
-        (len([1 for cat in model.cat_list if cat.is_hungry]) / num_cats)
+    return 0 if not model.num_cats else \
+        (len([1 for cat in model.cat_list if cat.is_hungry]) / model.num_cats)
 
 def get_mice_pop(model):
     restaurants = model.restaurant_list
     return sum([res.mice_pop for res in restaurants])
+
+
 
 class_map = {
     "street" : StreetAgent,
@@ -302,7 +305,8 @@ class_map = {
 class FoodModel(mesa.Model):
     def __init__(self, num_cats, hunger_rate, width, height, house_willingness,
         house_rate, sleep_rate, sleep_duration_rate, cat_removal_rate,
-        initial_mice_pop, mouse_growth_rate, seed=1234):
+        initial_mice_pop, mouse_growth_rate, save_out, save_frequency,
+        seed=1234):
         self.current_tick = 1 # Time tracking for policies
         self.cat_removal_rate = ((cat_removal_rate * 60) / MINUTES_PER_TICK)
         self.current_id = 1
@@ -310,6 +314,9 @@ class FoodModel(mesa.Model):
         self.hunger_rate = hunger_rate
         self.sleep_rate = sleep_rate
         self.sleep_duration_rate = sleep_duration_rate
+        self.save_out = save_out
+        self.save_frequency = save_frequency
+        self.file_datetime = time.strftime("%Y_%m_%d_%H_%M",time.localtime())
 
         self.grid = mesa.space.MultiGrid(width, height, True)
 
@@ -363,12 +370,18 @@ class FoodModel(mesa.Model):
         self.datacollector.collect(self)
         self.schedule.step()
         self.current_tick += 1
+
+        if self.current_tick % self.save_frequency == 0 and self.save_out:
+            self.datacollector.get_model_vars_dataframe().to_csv(
+                self.file_datetime + str(self.current_tick) + ".csv")
+
         if self.cat_removal_rate and \
             ((self.current_tick % self.cat_removal_rate) == 0):
             random_cat = self.random.choice(self.cat_list)
             self.grid.remove_agent(random_cat)
             self.schedule.remove(random_cat)
             self.cat_list.remove(random_cat)
+            self.num_cats -=1
         #print(self.kitten_queue)
         if self.current_tick in self.kitten_queue:
             num_cats_to_add = self.kitten_queue[self.current_tick]
@@ -380,7 +393,8 @@ class FoodModel(mesa.Model):
                 y = self.random.randrange(self.grid.height)
                 self.grid.place_agent(curr_a, (x, y))
                 self.cat_list.append(curr_a)
-        print(len(self.cat_list))
+                self.num_cats += 1
+        #print(len(self.cat_list))
 
 def agent_portrayal(agent):
 
@@ -474,7 +488,11 @@ if __name__ == "__main__":
             max_value=10, step=1),
         "mouse_growth_rate" : mesa.visualization.Slider(
             "Average mouse growth rate (hours)", value=72, min_value=48,
-            max_value=480, step=24)}
+            max_value=480, step=24),
+        "save_out" : mesa.visualization.Checkbox("Save data", True),
+        "save_frequency" : mesa.visualization.Slider(
+            "Number of ticks between saves", value=1000, min_value=1000,
+            max_value=100000, step=1000)}
 
     grid = mesa.visualization.CanvasGrid(agent_portrayal, GRID_WIDTH,
         GRID_HEIGHT, GRID_PIXEL_WIDTH,GRID_PIXEL_HEIGHT)
