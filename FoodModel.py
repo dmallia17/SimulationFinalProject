@@ -55,6 +55,7 @@ class CatAgent(mesa.Agent):
         sleep_duration_rate, sex):
         super().__init__(unique_id, model)
         self.sex = sex # Assume True=male,False=female
+        self.aggressiveness = 0 if not self.sex else self.random.uniform(0,1)
         self.pregnant = False # Default all cats to not pregnant
         self.ticks_until_birth = None
         self.chosen_mate = None
@@ -192,7 +193,7 @@ class CatAgent(mesa.Agent):
         elif (not self.pregnant) and (possible_mates := \
             [a for a in self.model.grid.iter_neighbors(self.pos, True, True) \
             if isinstance(a, CatAgent) and a.sex != self.sex and \
-                not a.pregnant]):
+                not a.pregnant and not a.is_asleep]):
             self.chosen_mate = self.random.choice(possible_mates)
             self.model.grid.move_agent(self, self.chosen_mate.pos)
         # CHANGE
@@ -212,8 +213,31 @@ class CatAgent(mesa.Agent):
     # - Killed by fight             [ ]
     # - Killed by car               [ ]
     def act(self):
+        other_agents = [a for a in \
+            self.model.grid.grid[self.pos[0]][self.pos[1]] if a is not self]
+        # Encounters car?
+        # if [a for a in other_agents if isinstance(a, StreetAgent)]:
+
         # Encountered other cat?
-    
+        active_cats_in_cell = [a for a in other_agents if \
+            isinstance(a, CatAgent) and not a.is_asleep]
+        male_cats = [cat for cat in active_cats_in_cell if cat.sex]
+        female_cats = [cat for cat in active_cats_in_cell if not cat.sex]
+        if self.sex and male_cats: # If male and encountering other males
+            # Encounter?
+            encounter_prob = 1 - (1 / (1 + len(male_cats)))
+            if (self.random.uniform(0, 1) < encounter_prob):
+                print(encounter_prob)
+                # Which cat
+                other_male = self.random.choice(male_cats)
+                # Violent?
+                violent_prob = (self.aggressiveness + \
+                    other_male.aggressiveness + int((len(female_cats) > 0))) / 3
+                if self.random.uniform(0, 1) < violent_prob*.3:
+                    print(violent_prob)
+                    print("CAT FIGHT AT", self.pos)
+                    self.model.cat_fights += 1
+                    return
 
         # Came here to reproduce?
         if self.chosen_mate is not None:
@@ -317,6 +341,7 @@ class FoodModel(mesa.Model):
         self.save_out = save_out
         self.save_frequency = save_frequency
         self.file_datetime = time.strftime("%Y_%m_%d_%H_%M",time.localtime())
+        self.cat_fights = 0
 
         self.grid = mesa.space.MultiGrid(width, height, True)
 
@@ -395,6 +420,7 @@ class FoodModel(mesa.Model):
                 self.cat_list.append(curr_a)
                 self.num_cats += 1
         #print(len(self.cat_list))
+        print(self.cat_fights)
 
 def agent_portrayal(agent):
 
