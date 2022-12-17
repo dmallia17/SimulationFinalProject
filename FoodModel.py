@@ -2,7 +2,17 @@ import time
 import mesa
 import numpy as np
 import pandas as pd
-from Utilities import get_locs
+from Utilities import get_locs, euclidean_distance
+
+# MESA GRID CONVENTION
+#   |
+# y |       o
+#   |
+#       -   -   -
+#           x
+#
+
+#pos[x][y] = o
 
 GRID_PIXEL_WIDTH = 1000
 GRID_PIXEL_HEIGHT = 1000
@@ -17,6 +27,11 @@ TICKS_UNTIL_BIRTH = (60 * 24 * 60) / MINUTES_PER_TICK
 TICKS_UNTIL_MATURE = (45 * 24 * 60 ) / MINUTES_PER_TICK
 KITTEN_LITTER_MIN = 2
 KITTEN_LITTER_MAX = 6
+# Threshold for when the cat decides to head back to known food sources (we
+# assume this is around 6 hours). Must be negative as this is the time elapsed
+# since they became hungry.
+FOOD_THRESHOLD = -1 * (360 / MINUTES_PER_TICK)
+
 
 class StreetAgent(mesa.Agent):
     pass
@@ -72,6 +87,8 @@ class CatAgent(mesa.Agent):
             np.random.poisson(self.hunger_rate)
         self.found_food = None # Food zone (e.g. House)
         self.found_food_type = None # Food zone type (e.g. HouseAgent)
+        self.last_food_loc = None
+        self.go_wander = False
 
         # SLEEP
         # NOTE: Can revisit and add some tolerance for still searching for food
@@ -111,11 +128,21 @@ class CatAgent(mesa.Agent):
         # Do a search of radius 1 for houses with food
         for neighbor in self.model.grid.iter_neighbors(self.pos, True, True):
             if (isinstance(neighbor, HouseAgent) and neighbor.food) or \
-                (isinstance(neighbor, RestaurantAgent) and neighbor.mice_pop > 0):
+                (isinstance(neighbor, RestaurantAgent) and \
+                    neighbor.mice_pop > 0 and not self.go_wander):
                 new_loc = neighbor.pos
                 self.found_food = neighbor
                 self.found_food_type = type(neighbor)
                 break
+
+        if new_loc is None and self.last_food_loc is not None and \
+            self.ticks_until_hungry < FOOD_THRESHOLD and not self.go_wander:
+            new_loc = min([(loc, euclidean_distance(self.pos, loc)) \
+                for loc in self.model.grid.get_neighborhood(self.pos, True)],
+                key=lambda x : x[1])[0]
+
+        if self.ticks_until_hungry < -96:
+            self.go_wander = True
 
         # Currently just random search if no food
         # Can update to...
@@ -204,19 +231,32 @@ class CatAgent(mesa.Agent):
                                    moore=True, 
                                    include_center=False)))
 
+    def no_cat_in_cell(self, cell):
+        print(cell)
+        return (len(
+            [agent for agent in cell if isinstance(agent, CatAgent)]) == 0)
+
     # A CAT MAY
     # - Eat house food              [X]
     # - Eat mice                    [X]
     # - Eat bird                    [ ]
-    # - Fight                       [ ]
+    # - Fight                       [X]
     # - Reproduce                   [X]
     # - Killed by fight             [ ]
     # - Killed by car               [ ]
     def act(self):
         other_agents = [a for a in \
             self.model.grid.grid[self.pos[0]][self.pos[1]] if a is not self]
-        # Encounters car?
-        # if [a for a in other_agents if isinstance(a, StreetAgent)]:
+        # On street
+        if [a for a in other_agents if isinstance(a, StreetAgent)]:
+            # Gets hit by car?
+            if (self.random.uniform(0,1) < self.model.car_hit_prob):
+                self.model.grid.remove_agent(self)
+                self.model.schedule.remove(self)
+                self.model.cat_list.remove(self)
+                self.model.num_cats -=1
+                self.model.num_cats_hit_by_car += 1
+                return
 
         # Encountered other cat?
         active_cats_in_cell = [a for a in other_agents if \
@@ -237,6 +277,20 @@ class CatAgent(mesa.Agent):
                     print(violent_prob)
                     print("CAT FIGHT AT", self.pos)
                     self.model.cat_fights += 1
+                    # BOTH CATS RUN TO RANDOM LOCATION
+                    run_locations = []
+                    radius_to_run = 3
+                    while len(run_locations) < 2:
+                        run_locations = [loc for loc in \
+                            self.model.grid.get_neighborhood(
+                                self.pos, True, False, radius_to_run) \
+                            if self.no_cat_in_cell(
+                                self.model.grid.grid[loc[0]][loc[1]])]
+                        radius_to_run += 1
+                        print(run_locations)
+                    run_locs = self.random.choices(run_locations, k=2)
+                    self.model.grid.move_agent(self, run_locs[0])
+                    self.model.grid.move_agent(other_male, run_locs[1])
                     return
 
         # Came here to reproduce?
@@ -255,10 +309,13 @@ class CatAgent(mesa.Agent):
         # Came here to eat? 
         if self.found_food:
             food_success = False
+            #self.last_food_loc = self.found_food.pos
             if self.found_food_type is HouseAgent:
                 self.is_hungry = False
                 self.found_food.food = False
                 food_success = True
+                self.last_food_loc = self.found_food.pos
+                self.go_wander = False
             elif self.found_food_type is RestaurantAgent:
                 u = self.random.uniform(0,1)
                 if (u < self.hunt_ability * self.found_food.mouse_prob):
@@ -267,6 +324,8 @@ class CatAgent(mesa.Agent):
                     self.found_food.mice_pop -= 1
                     self.found_food.mice_caught += 1
                     self.found_food.mouse_growth_rate += 1
+                    self.last_food_loc = self.found_food.pos
+                    self.go_wander = False
             self.ticks_until_hungry = np.random.poisson(self.hunger_rate) \
                 if food_success else self.ticks_until_hungry
             #print("I ATE FOOD")
@@ -316,7 +375,24 @@ def get_mice_pop(model):
     restaurants = model.restaurant_list
     return sum([res.mice_pop for res in restaurants])
 
+def get_cat_pop(model):
+    return model.num_cats
 
+def get_cats_hit_by_car(model):
+    return model.num_cats_hit_by_car
+
+def get_cats_removed_under_policy(model):
+    return model.num_cats_removed_under_policy
+
+def max_hunger(model):
+    print(min(model.cat_list, key= lambda cat:cat.ticks_until_hungry).pos)
+    return min([cat.ticks_until_hungry for cat in model.cat_list])
+
+def get_cat_pregnancies(model):
+    return len([cat for cat in model.cat_list if cat.pregnant])
+
+def get_cat_fights(model):
+    return model.cat_fights
 
 class_map = {
     "street" : StreetAgent,
@@ -330,7 +406,7 @@ class FoodModel(mesa.Model):
     def __init__(self, num_cats, hunger_rate, width, height, house_willingness,
         house_rate, sleep_rate, sleep_duration_rate, cat_removal_rate,
         initial_mice_pop, mouse_growth_rate, save_out, save_frequency,
-        seed=1234):
+        car_hit_prob, seed=1234):
         self.current_tick = 1 # Time tracking for policies
         self.cat_removal_rate = ((cat_removal_rate * 60) / MINUTES_PER_TICK)
         self.current_id = 1
@@ -342,6 +418,9 @@ class FoodModel(mesa.Model):
         self.save_frequency = save_frequency
         self.file_datetime = time.strftime("%Y_%m_%d_%H_%M",time.localtime())
         self.cat_fights = 0
+        self.car_hit_prob = car_hit_prob
+        self.num_cats_hit_by_car = 0
+        self.num_cats_removed_under_policy = 0
 
         self.grid = mesa.space.MultiGrid(width, height, True)
 
@@ -388,7 +467,8 @@ class FoodModel(mesa.Model):
 
         self.datacollector = mesa.DataCollector(
             model_reporters = { "Hunger"      : get_hunger,
-                                "Mice Pop."   : get_mice_pop})
+                                "Mice Pop."   : get_mice_pop,
+                                "Max Hunger"  : max_hunger})
 
     def step(self):
         """Advance the model by one step."""
@@ -407,6 +487,7 @@ class FoodModel(mesa.Model):
             self.schedule.remove(random_cat)
             self.cat_list.remove(random_cat)
             self.num_cats -=1
+            self.num_cats_removed_under_policy += 1
         #print(self.kitten_queue)
         if self.current_tick in self.kitten_queue:
             num_cats_to_add = self.kitten_queue[self.current_tick]
@@ -426,8 +507,10 @@ def agent_portrayal(agent):
 
     # https://www.flaticon.com/free-icon/cat_220124
     if isinstance(agent, CatAgent):
+        img_file = "Images/cat_male.PNG" if agent.sex else \
+            "Images/cat_female.PNG"
         portrayal = {
-            "Shape" : "Images/cat.PNG",
+            "Shape" : img_file,
             "Layer" : 1,
             "scale" : 0.7
         }
@@ -515,6 +598,9 @@ if __name__ == "__main__":
         "mouse_growth_rate" : mesa.visualization.Slider(
             "Average mouse growth rate (hours)", value=72, min_value=48,
             max_value=480, step=24),
+        "car_hit_prob" : mesa.visualization.Slider(
+            "Car hit probability", value=.0001, min_value=.0001, max_value=0.001,
+            step=.0001),
         "save_out" : mesa.visualization.Checkbox("Save data", True),
         "save_frequency" : mesa.visualization.Slider(
             "Number of ticks between saves", value=1000, min_value=1000,
@@ -522,12 +608,14 @@ if __name__ == "__main__":
 
     grid = mesa.visualization.CanvasGrid(agent_portrayal, GRID_WIDTH,
         GRID_HEIGHT, GRID_PIXEL_WIDTH,GRID_PIXEL_HEIGHT)
-    chart = mesa.visualization.ChartModule(
+    hunger_chart = mesa.visualization.ChartModule(
         [{"Label" : "Hunger", "Color" : "Black"}])
-    chart2 = mesa.visualization.ChartModule(
+    mice_pop_chart = mesa.visualization.ChartModule(
         [{"Label" : "Mice Pop.", "Color" : "Black"}])
+    max_cat_hunger_chart = mesa.visualization.ChartModule(
+        [{"Label" : "Max Hunger", "Color" : "Black"}])
     server = mesa.visualization.ModularServer(
-        FoodModel, [grid, chart2], "Food Model", model_parameters)
+        FoodModel, [grid, max_cat_hunger_chart], "Food Model", model_parameters)
     server.launch()
 
 
