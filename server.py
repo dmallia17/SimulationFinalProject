@@ -7,6 +7,7 @@
 #               interactive and visual fashion in the browser.
 # Run:          python3 server.py
 
+import argparse
 from CatModel import *
 
 # Function to define how each agent should be rendered
@@ -81,6 +82,15 @@ def agent_portrayal(agent):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Run interactive Cat ABM simulation")
+        # hunger, mice pop, max hunger
+    parser.add_argument("--hunger_chart", action="store_true")
+    parser.add_argument("--mice_pop_chart", action="store_true")
+    parser.add_argument("--max_hunger_chart", action="store_true")
+    parser.add_argument("--all_charts", action="store_true")
+    args = parser.parse_args()
+
     model_parameters = {"width" : GRID_WIDTH, "height" : GRID_HEIGHT,
         "cat_removal_rate" : mesa.visualization.Slider(
             "Hours until cat removal", value=0, min_value=0,
@@ -116,13 +126,18 @@ if __name__ == "__main__":
 
     grid = mesa.visualization.CanvasGrid(agent_portrayal, GRID_WIDTH,
         GRID_HEIGHT, GRID_PIXEL_WIDTH,GRID_PIXEL_HEIGHT)
-    hunger_chart = mesa.visualization.ChartModule(
-        [{"Label" : "Hunger", "Color" : "Black"}])
-    mice_pop_chart = mesa.visualization.ChartModule(
-        [{"Label" : "Mice Pop.", "Color" : "Black"}])
-    max_cat_hunger_chart = mesa.visualization.ChartModule(
-        [{"Label" : "Max Hunger", "Color" : "Black"}])
+    charts=[]
+    if args.all_charts or args.hunger_chart:
+        charts.append(mesa.visualization.ChartModule(
+            [{"Label" : "Hunger", "Color" : "Black"}]))
+    if args.all_charts or args.mice_pop_chart:
+        charts.append(mesa.visualization.ChartModule(
+            [{"Label" : "Mice Pop.", "Color" : "Black"}]))
+    if args.all_charts or args.max_hunger_chart:
+        charts.append(mesa.visualization.ChartModule(
+            [{"Label" : "Max Hunger", "Color" : "Black"}]))
+    elements = [grid] + charts
     server = mesa.visualization.ModularServer(
-        CatModel, [grid, max_cat_hunger_chart], "Cat Model", model_parameters)
+        CatModel, elements, "Cat Model", model_parameters)
     server.launch()
 
