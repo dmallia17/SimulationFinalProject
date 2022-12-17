@@ -1,4 +1,4 @@
-import random
+import math, random
 from collections import defaultdict
 
 # SCALE NOTES:
@@ -43,4 +43,6 @@ def get_locs(grid_width=20, lots_between=24):
 
     return mapping
 
+def euclidean_distance(pos1, pos2):
+    return math.sqrt(((pos1[0] - pos2[0]) ** 2) + ((pos1[1] - pos2[1]) ** 2))
 
