@@ -1,7 +1,6 @@
 import time
 import mesa
 import numpy as np
-import pandas as pd
 from Utilities import get_locs, euclidean_distance
 
 # MESA GRID CONVENTION
@@ -243,7 +242,7 @@ class CatAgent(mesa.Agent):
     # - Fight                       [X]
     # - Reproduce                   [X]
     # - Killed by fight             [ ]
-    # - Killed by car               [ ]
+    # - Killed by car               [X]
     def act(self):
         other_agents = [a for a in \
             self.model.grid.grid[self.pos[0]][self.pos[1]] if a is not self]
@@ -402,7 +401,7 @@ class_map = {
     "restaurant" : RestaurantAgent
 }
 
-class FoodModel(mesa.Model):
+class CatModel(mesa.Model):
     def __init__(self, num_cats, hunger_rate, width, height, house_willingness,
         house_rate, sleep_rate, sleep_duration_rate, cat_removal_rate,
         initial_mice_pop, mouse_growth_rate, save_out, save_frequency,
@@ -416,7 +415,7 @@ class FoodModel(mesa.Model):
         self.sleep_duration_rate = sleep_duration_rate
         self.save_out = save_out
         self.save_frequency = save_frequency
-        self.file_datetime = time.strftime("%Y_%m_%d_%H_%M",time.localtime())
+        self.file_datetime = time.strftime("%Y_%m_%d_%H_%M_",time.localtime())
         self.cat_fights = 0
         self.car_hit_prob = car_hit_prob
         self.num_cats_hit_by_car = 0
@@ -615,7 +614,7 @@ if __name__ == "__main__":
     max_cat_hunger_chart = mesa.visualization.ChartModule(
         [{"Label" : "Max Hunger", "Color" : "Black"}])
     server = mesa.visualization.ModularServer(
-        FoodModel, [grid, max_cat_hunger_chart], "Food Model", model_parameters)
+        CatModel, [grid, max_cat_hunger_chart], "Cat Model", model_parameters)
     server.launch()
 
 
