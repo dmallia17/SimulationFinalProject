@@ -21,8 +21,6 @@ from Utilities import get_locs, euclidean_distance
 
 #pos[x][y] = o
 
-GRID_PIXEL_WIDTH = 1000
-GRID_PIXEL_HEIGHT = 1000
 GRID_WIDTH = 20
 GRID_HEIGHT = 24
 MINUTES_PER_TICK = 15
@@ -410,10 +408,9 @@ class_map = {
 }
 
 class CatModel(mesa.Model):
-    def __init__(self, num_cats, hunger_rate, width, height, house_willingness,
-        house_rate, sleep_rate, sleep_duration_rate, cat_removal_rate,
-        initial_mice_pop, mouse_growth_rate, save_out, save_frequency,
-        car_hit_prob, seed=1234):
+    def __init__(self, cat_removal_rate, num_cats, hunger_rate, sleep_rate,
+        sleep_duration_rate, house_willingness, house_rate, initial_mice_pop,
+        mouse_growth_rate, save_out, save_frequency, car_hit_prob, seed=1234):
         self.current_tick = 1 # Time tracking for policies
         self.cat_removal_rate = ((cat_removal_rate * 60) / MINUTES_PER_TICK)
         self.current_id = 1
@@ -429,7 +426,7 @@ class CatModel(mesa.Model):
         self.num_cats_hit_by_car = 0
         self.num_cats_removed_under_policy = 0
 
-        self.grid = mesa.space.MultiGrid(width, height, True)
+        self.grid = mesa.space.MultiGrid(GRID_WIDTH, GRID_HEIGHT, True)
 
         self.schedule = mesa.time.RandomActivation(self)
 
@@ -448,7 +445,7 @@ class CatModel(mesa.Model):
             self.cat_list.append(curr_a)
 
         # GRID / ENVIRONMENTAL SETUP
-        environment = get_locs(width, height)
+        environment = get_locs(self.grid.width, self.grid.height)
 
         # TODO: UPDATE THIS ACCORDINGLY
         environment_params={

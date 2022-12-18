@@ -1,0 +1,95 @@
+{
+    "cat_removal_rate" : {
+        "type" : "Slider",
+        "name" : "Hours until cat removal",
+        "value" : 0,
+        "min_value" : 0,
+        "max_value" : 720,
+        "step" : 24
+    },
+    "num_cats" : {
+        "type" : "Slider",
+        "name" : "Number of cats",
+        "value" : 10,
+        "min_value" : 2,
+        "max_value" : 100,
+        "step" : 2
+    },
+    "hunger_rate" : {
+        "type" : "Slider",
+        "name" : "Cat hunger rate (hours)",
+        "value" : 6,
+        "min_value" : 1,
+        "max_value" : 10,
+        "step" :1
+    },
+    "sleep_rate" : {
+        "type" : "Slider",
+        "name" : "Cat sleep rate (hours)",
+        "value" : 0.75,
+        "min_value" : 0.25,
+        "max_value" : 1.25,
+        "step" : 0.25
+    },
+    "sleep_duration_rate" : {
+        "type" : "Slider",
+        "name" : "Cat sleep duration (hours)",
+        "value" : 1.5,
+        "min_value" : 1,
+        "max_value" : 2,
+        "step" : 0.25
+    },
+    "house_willingness" : {
+        "type" : "Slider",
+        "name" : "House willingness",
+        "value" : 0.2,
+        "min_value" : 0,
+        "max_value" :1,
+        "step" : 0.1
+    },
+    "house_rate" : {
+        "type" : "Slider",
+        "name" : "House rate (hours)",
+        "value" : 8,
+        "min_value" : 4,
+        "max_value" : 24,
+        "step" : 1
+    },
+    "initial_mice_pop" : {
+        "type" : "Slider",
+        "name" : "Average initial mice population",
+        "value" :2,
+        "min_value" : 1,
+        "max_value" : 10,
+        "step" : 1
+    },
+    "mouse_growth_rate" : {
+        "type" : "Slider",
+        "name" : "Average mouse growth rate (hours)",
+        "value" : 72,
+        "min_value" : 48,
+        "max_value" : 480,
+        "step" : 24
+    },
+    "car_hit_prob" : {
+        "type" : "Slider",
+        "name" : "Car hit probability",
+        "value" : 0.0001,
+        "min_value" : 0.0001,
+        "max_value" : 0.001,
+        "step" : 0.0001
+    },
+    "save_out" : {
+        "type" : "Checkbox",
+        "name" : "Save data",
+        "value" : false
+    },
+    "save_frequency" : {
+        "type" : "Slider",
+        "name" : "Number of ticks between saves",
+        "value" : 1000,
+        "min_value" : 1000,
+        "max_value" : 100000,
+        "step" : 1000
+    }
+}

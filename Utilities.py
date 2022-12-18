@@ -1,5 +1,6 @@
 import math, random
 from collections import defaultdict
+import mesa
 
 # SCALE NOTES:
 # We are focusing around house lots - a street including sidewalks is
@@ -46,3 +47,12 @@ def get_locs(grid_width=20, lots_between=24):
 def euclidean_distance(pos1, pos2):
     return math.sqrt(((pos1[0] - pos2[0]) ** 2) + ((pos1[1] - pos2[1]) ** 2))
 
+
+def get_mesa_visualization_element(json_dict, element):
+    mesa_type_map = {
+        "Slider" : mesa.visualization.Slider,
+        "Checkbox" : mesa.visualization.Checkbox
+    }
+    element_details = json_dict[element]
+    constructor = mesa_type_map[element_details["type"]]
+    return constructor(**{k : v for (k,v) in element_details.items() if k != "type"})

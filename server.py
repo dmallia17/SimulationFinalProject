@@ -7,8 +7,9 @@
 #               interactive and visual fashion in the browser.
 # Run:          python3 server.py
 
-import argparse
+import argparse, json
 from CatModel import *
+from Utilities import get_mesa_visualization_element
 
 # Function to define how each agent should be rendered
 def agent_portrayal(agent):
@@ -82,50 +83,49 @@ def agent_portrayal(agent):
 
 
 if __name__ == "__main__":
+    # Read in JSON file with simulation parameters
+    with open("simulation_params.json", "r") as f:
+        sim_params = json.load(f)
+
     parser = argparse.ArgumentParser(
         description="Run interactive Cat ABM simulation")
-        # hunger, mice pop, max hunger
     parser.add_argument("--hunger_chart", action="store_true")
     parser.add_argument("--mice_pop_chart", action="store_true")
     parser.add_argument("--max_hunger_chart", action="store_true")
     parser.add_argument("--all_charts", action="store_true")
+    parser.add_argument("--grid_px_width", type=int, default=1000,
+        help="Width of the grid display in pixels")
+    parser.add_argument("--grid_px_height", type=int, default=1000,
+        help="Height of the grid display in pixels")
     args = parser.parse_args()
 
-    model_parameters = {"width" : GRID_WIDTH, "height" : GRID_HEIGHT,
-        "cat_removal_rate" : mesa.visualization.Slider(
-            "Hours until cat removal", value=0, min_value=0,
-            max_value=(30 * 24), step=24),
-        "num_cats" : mesa.visualization.Slider(
-            "Number of cats", value=10, min_value=2, max_value=100, step=2),
-        "hunger_rate" : mesa.visualization.Slider(
-            "Cat hunger rate (hours)", value=6, min_value=1, max_value=10,
-            step=1),
-        "sleep_rate" : mesa.visualization.Slider(
-            "Cat sleep rate (hours)", value=.75, min_value=.25, max_value=1.25,
-            step=.25),
-        "sleep_duration_rate" : mesa.visualization.Slider(
-            "Cat sleep duration (hours", value=1.5, min_value=1, max_value=2,
-            step=.25),
-        "house_willingness" : mesa.visualization.Slider(
-            "House willingness", value=0.2, min_value=0, max_value=1, step=0.1),
-        "house_rate" : mesa.visualization.Slider(
-            "House rate (hours)", value=8, min_value=4, max_value=24, step=1),
-        "initial_mice_pop" : mesa.visualization.Slider(
-            "Average initial mice population", value=2, min_value=1,
-            max_value=10, step=1),
-        "mouse_growth_rate" : mesa.visualization.Slider(
-            "Average mouse growth rate (hours)", value=72, min_value=48,
-            max_value=480, step=24),
-        "car_hit_prob" : mesa.visualization.Slider(
-            "Car hit probability", value=.0001, min_value=.0001, max_value=0.001,
-            step=.0001),
-        "save_out" : mesa.visualization.Checkbox("Save data", True),
-        "save_frequency" : mesa.visualization.Slider(
-            "Number of ticks between saves", value=1000, min_value=1000,
-            max_value=100000, step=1000)}
+    model_parameters = {
+        "cat_removal_rate" : get_mesa_visualization_element(sim_params,
+            "cat_removal_rate"),
+        "num_cats" : get_mesa_visualization_element(sim_params,
+            "num_cats"),
+        "hunger_rate" : get_mesa_visualization_element(sim_params,
+            "hunger_rate"),
+        "sleep_rate" : get_mesa_visualization_element(sim_params,
+            "sleep_rate"),
+        "sleep_duration_rate" : get_mesa_visualization_element(sim_params,
+            "sleep_duration_rate"),
+        "house_willingness" : get_mesa_visualization_element(sim_params,
+            "house_willingness"),
+        "house_rate" : get_mesa_visualization_element(sim_params,
+            "house_rate"),
+        "initial_mice_pop" : get_mesa_visualization_element(sim_params,
+            "initial_mice_pop"),
+        "mouse_growth_rate" : get_mesa_visualization_element(sim_params,
+            "mouse_growth_rate"),
+        "car_hit_prob" : get_mesa_visualization_element(sim_params,
+            "car_hit_prob"),
+        "save_out" : get_mesa_visualization_element(sim_params, "save_out"),
+        "save_frequency" :get_mesa_visualization_element(sim_params,
+            "save_frequency")}
 
     grid = mesa.visualization.CanvasGrid(agent_portrayal, GRID_WIDTH,
-        GRID_HEIGHT, GRID_PIXEL_WIDTH,GRID_PIXEL_HEIGHT)
+        GRID_HEIGHT, args.grid_px_width, args.grid_px_height)
     charts=[]
     if args.all_charts or args.hunger_chart:
         charts.append(mesa.visualization.ChartModule(
