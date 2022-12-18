@@ -73,8 +73,9 @@ def populate_parser(parser, json_dict):
                 parser.add_argument("--no_" + k, action="store_false",
                     help=help_str)
 
-def check_args(args, json_dict):
-    for k,v in (vars(args)).items():
+# TODO: May need to add an optional ignore list if permitting parameter sweeps
+def check_args(args_dict, json_dict):
+    for k,v in args_dict.items():
         dict_entry = json_dict[k]
         if dict_entry["type"] == "Slider":
             min_anticipated = dict_entry["min_value"]

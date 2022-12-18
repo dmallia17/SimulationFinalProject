@@ -104,8 +104,8 @@ class CatAgent(mesa.Agent):
         self.sleep_duration_rate = ((sleep_duration_rate * 60) / MINUTES_PER_TICK)
 
 
-        print("SLEEPY RATE:", self.sleepy_rate)
-        print("SLEEP DURATION RATE:", self.sleep_duration_rate)
+        #print("SLEEPY RATE:", self.sleepy_rate)
+        #print("SLEEP DURATION RATE:", self.sleep_duration_rate)
 
         # Are they asleep right now
         self.is_asleep = self.random.choices(
@@ -237,7 +237,7 @@ class CatAgent(mesa.Agent):
                                    include_center=False)))
 
     def no_cat_in_cell(self, cell):
-        print(cell)
+        #print(cell)
         return (len(
             [agent for agent in cell if isinstance(agent, CatAgent)]) == 0)
 
@@ -272,15 +272,15 @@ class CatAgent(mesa.Agent):
             # Encounter?
             encounter_prob = 1 - (1 / (1 + len(male_cats)))
             if (self.random.uniform(0, 1) < encounter_prob):
-                print(encounter_prob)
+                #print(encounter_prob)
                 # Which cat
                 other_male = self.random.choice(male_cats)
                 # Violent?
                 violent_prob = (self.aggressiveness + \
                     other_male.aggressiveness + int((len(female_cats) > 0))) / 3
                 if self.random.uniform(0, 1) < violent_prob*.3:
-                    print(violent_prob)
-                    print("CAT FIGHT AT", self.pos)
+                    #print(violent_prob)
+                    #print("CAT FIGHT AT", self.pos)
                     self.model.cat_fights += 1
                     # BOTH CATS RUN TO RANDOM LOCATION
                     run_locations = []
@@ -292,7 +292,7 @@ class CatAgent(mesa.Agent):
                             if self.no_cat_in_cell(
                                 self.model.grid.grid[loc[0]][loc[1]])]
                         radius_to_run += 1
-                        print(run_locations)
+                        #print(run_locations)
                     run_locs = self.random.choices(run_locations, k=2)
                     self.model.grid.move_agent(self, run_locs[0])
                     self.model.grid.move_agent(other_male, run_locs[1])
@@ -300,7 +300,7 @@ class CatAgent(mesa.Agent):
 
         # Came here to reproduce?
         if self.chosen_mate is not None:
-            print("Moved to mate")
+            #print("Moved to mate")
             # Probabilistic mating
             u = self.random.uniform(0, 1)
             if (u < MATING_PROBABILITY):
@@ -390,7 +390,7 @@ def get_cats_removed_under_policy(model):
     return model.num_cats_removed_under_policy
 
 def max_hunger(model):
-    print(min(model.cat_list, key= lambda cat:cat.ticks_until_hungry).pos)
+    #print(min(model.cat_list, key= lambda cat:cat.ticks_until_hungry).pos)
     return min([cat.ticks_until_hungry for cat in model.cat_list])
 
 def get_cat_pregnancies(model):
@@ -429,6 +429,9 @@ class CatModel(mesa.Model):
         self.grid = mesa.space.MultiGrid(GRID_WIDTH, GRID_HEIGHT, True)
 
         self.schedule = mesa.time.RandomActivation(self)
+
+        # REQUIRED FOR USE WITH BATCH RUN
+        self.running = True
 
         # Maintain a list of the cats - MUST be updated by reproduction
         self.cat_list = []
@@ -505,6 +508,6 @@ class CatModel(mesa.Model):
                 self.cat_list.append(curr_a)
                 self.num_cats += 1
         #print(len(self.cat_list))
-        print(self.cat_fights)
+        #print(self.cat_fights)
 
 
