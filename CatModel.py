@@ -410,7 +410,7 @@ class_map = {
 class CatModel(mesa.Model):
     def __init__(self, cat_removal_rate, num_cats, hunger_rate, sleep_rate,
         sleep_duration_rate, house_willingness, house_rate, initial_mice_pop,
-        mouse_growth_rate, save_out, save_frequency, car_hit_prob, seed=1234):
+        mouse_growth_rate, save_out, save_frequency, car_hit_prob, seed=None):
         self.current_tick = 1 # Time tracking for policies
         self.cat_removal_rate = ((cat_removal_rate * 60) / MINUTES_PER_TICK)
         self.current_id = 1
@@ -473,9 +473,14 @@ class CatModel(mesa.Model):
                 self.grid.place_agent(curr_a, loc)
 
         self.datacollector = mesa.DataCollector(
-            model_reporters = { "Hunger"      : get_hunger,
-                                "Mice Pop."   : get_mice_pop,
-                                "Max Hunger"  : max_hunger})
+            model_reporters = { "Hunger"        : get_hunger,
+                                "Mice Pop."     : get_mice_pop,
+                                "Max Hunger"    : max_hunger,
+                                "Cat Pop."      : get_cat_pop,
+                                "Cats Pregnant" : get_cat_pregnancies,
+                                "Cats Hit"      : get_cats_hit_by_car,
+                                "Cats Removed"  : get_cats_removed_under_policy,
+                                "Cat Fights"    : get_cat_fights})
 
     def step(self):
         """Advance the model by one step."""
