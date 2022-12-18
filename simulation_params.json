@@ -9,7 +9,7 @@
     },
     "num_cats" : {
         "type" : "Slider",
-        "name" : "Number of cats",
+        "name" : "Number of cats (must be even)",
         "value" : 10,
         "min_value" : 2,
         "max_value" : 100,
@@ -58,7 +58,7 @@
     "initial_mice_pop" : {
         "type" : "Slider",
         "name" : "Average initial mice population",
-        "value" :2,
+        "value" : 2,
         "min_value" : 1,
         "max_value" : 10,
         "step" : 1

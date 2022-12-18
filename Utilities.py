@@ -56,3 +56,37 @@ def get_mesa_visualization_element(json_dict, element):
     element_details = json_dict[element]
     constructor = mesa_type_map[element_details["type"]]
     return constructor(**{k : v for (k,v) in element_details.items() if k != "type"})
+
+def populate_parser(parser, json_dict):
+    for k in json_dict:
+        curr_p = json_dict[k]
+        default_val = curr_p["value"]
+        help_str = curr_p["name"]
+        if curr_p["type"] == "Slider":
+            parser.add_argument("--" + k, type=type(default_val),
+            default=default_val, help=help_str)
+        elif curr_p["type"] == "Checkbox":
+            if not default_val: # Defaults to false
+                parser.add_argument("--" + k, action="store_true",
+                help=help_str)
+            else: # Defaults to true
+                parser.add_argument("--no_" + k, action="store_false",
+                    help=help_str)
+
+def check_args(args, json_dict):
+    for k,v in (vars(args)).items():
+        dict_entry = json_dict[k]
+        if dict_entry["type"] == "Slider":
+            min_anticipated = dict_entry["min_value"]
+            max_anticipated = dict_entry["max_value"]
+            step = dict_entry["step"]
+            if v < min_anticipated:
+                print("\x1b[41m" + k + " has a value LESS than expected" +
+                    "\x1b[0m\n")
+            if v > max_anticipated:
+                print("\x1b[41m" + k + " has a value GREATER than expected" +
+                    "\x1b[0m\n")
+            if v % step != 0:
+                print("\x1b[41m" + k +
+                    " has a value that cannot be reached with step" +
+                    "\x1b[0m\n")
