@@ -100,29 +100,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     model_parameters = {
-        "cat_removal_rate" : get_mesa_visualization_element(sim_params,
-            "cat_removal_rate"),
-        "num_cats" : get_mesa_visualization_element(sim_params,
-            "num_cats"),
-        "hunger_rate" : get_mesa_visualization_element(sim_params,
-            "hunger_rate"),
-        "sleep_rate" : get_mesa_visualization_element(sim_params,
-            "sleep_rate"),
-        "sleep_duration_rate" : get_mesa_visualization_element(sim_params,
-            "sleep_duration_rate"),
-        "house_willingness" : get_mesa_visualization_element(sim_params,
-            "house_willingness"),
-        "house_rate" : get_mesa_visualization_element(sim_params,
-            "house_rate"),
-        "initial_mice_pop" : get_mesa_visualization_element(sim_params,
-            "initial_mice_pop"),
-        "mouse_growth_rate" : get_mesa_visualization_element(sim_params,
-            "mouse_growth_rate"),
-        "car_hit_prob" : get_mesa_visualization_element(sim_params,
-            "car_hit_prob"),
-        "save_out" : get_mesa_visualization_element(sim_params, "save_out"),
-        "save_frequency" :get_mesa_visualization_element(sim_params,
-            "save_frequency")}
+        k : get_mesa_visualization_element(sim_params,k) for k in sim_params}
 
     grid = mesa.visualization.CanvasGrid(agent_portrayal, GRID_WIDTH,
         GRID_HEIGHT, args.grid_px_width, args.grid_px_height)
