@@ -92,6 +92,11 @@ if __name__ == "__main__":
     parser.add_argument("--hunger_chart", action="store_true")
     parser.add_argument("--mice_pop_chart", action="store_true")
     parser.add_argument("--max_hunger_chart", action="store_true")
+    parser.add_argument("--cat_pop_chart", action="store_true")
+    parser.add_argument("--cat_pregnancies_chart", action="store_true")
+    parser.add_argument("--cats_hit_chart", action="store_true")
+    parser.add_argument("--cats_removed_under_policy_chart", action="store_true")
+    parser.add_argument("--cat_fights_chart", action="store_true")
     parser.add_argument("--all_charts", action="store_true")
     parser.add_argument("--grid_px_width", type=int, default=1000,
         help="Width of the grid display in pixels")
@@ -114,6 +119,22 @@ if __name__ == "__main__":
     if args.all_charts or args.max_hunger_chart:
         charts.append(mesa.visualization.ChartModule(
             [{"Label" : "Max Hunger", "Color" : "Black"}]))
+    if args.all_charts or args.cat_pop_chart:
+        charts.append(mesa.visualization.ChartModule(
+            [{"Label" : "Cat Pop.", "Color" : "Black"}]))
+    if args.all_charts or args.cat_pregnancies_chart:
+        charts.append(mesa.visualization.ChartModule(
+            [{"Label" : "Cats Pregnant", "Color" : "Black"}]))
+    if args.all_charts or args.cats_hit_chart:
+        charts.append(mesa.visualization.ChartModule(
+            [{"Label" : "Cats Hit", "Color" : "Black"}]))
+    if args.all_charts or args.cats_removed_under_policy_chart:
+        charts.append(mesa.visualization.ChartModule(
+            [{"Label" : "Cats Removed", "Color" : "Black"}]))
+    if args.all_charts or args.cat_fights_chart:
+        charts.append(mesa.visualization.ChartModule(
+            [{"Label" : "Cat Fights", "Color" : "Black"}]))
+
     elements = [grid] + charts
     server = mesa.visualization.ModularServer(
         CatModel, elements, "Cat Model", model_parameters)
