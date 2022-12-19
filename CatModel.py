@@ -391,7 +391,8 @@ def get_cats_removed_under_policy(model):
 
 def max_hunger(model):
     #print(min(model.cat_list, key= lambda cat:cat.ticks_until_hungry).pos)
-    return min([cat.ticks_until_hungry for cat in model.cat_list])
+    return 0 if not model.cat_list else \
+        min([cat.ticks_until_hungry for cat in model.cat_list])
 
 def get_cat_pregnancies(model):
     return len([cat for cat in model.cat_list if cat.pregnant])
@@ -497,7 +498,8 @@ class CatModel(mesa.Model):
                 self.file_datetime + str(self.current_tick) + ".csv")
 
         if self.cat_removal_rate and \
-            ((self.current_tick % self.cat_removal_rate) == 0):
+            ((self.current_tick % self.cat_removal_rate) == 0) and \
+                self.cat_list:
             random_cat = self.random.choice(self.cat_list)
             self.grid.remove_agent(random_cat)
             self.schedule.remove(random_cat)
