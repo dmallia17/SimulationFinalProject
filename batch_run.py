@@ -7,7 +7,7 @@
 #               batch run mode for proper estimation.
 # Run:          python3 batch_run.py
 
-import argparse, json, math, time
+import argparse, json, math, os, time
 import mesa
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -80,6 +80,9 @@ if __name__ == "__main__":
     )
 
     res_df = pd.DataFrame(results)
+
+    # Create a Results directory
+    os.makedirs("Results/", exist_ok=True)
 
     # Plot populations over time
     get_pop_plot(res_df, "Cat", file_datetime)
