@@ -411,6 +411,10 @@ class CatModel(mesa.Model):
     def __init__(self, cat_removal_rate, num_cats, hunger_rate, sleep_rate,
         sleep_duration_rate, house_willingness, house_rate, initial_mice_pop,
         mouse_growth_rate, save_out, save_frequency, car_hit_prob, seed=None):
+
+        if seed is not None:
+            np.random.seed(seed)
+
         self.current_tick = 1 # Time tracking for policies
         self.cat_removal_rate = ((cat_removal_rate * 60) / MINUTES_PER_TICK)
         self.current_id = 1
@@ -448,7 +452,7 @@ class CatModel(mesa.Model):
             self.cat_list.append(curr_a)
 
         # GRID / ENVIRONMENTAL SETUP
-        environment = get_locs(self.grid.width, self.grid.height)
+        environment = get_locs(self.random, self.grid.width, self.grid.height)
 
         # TODO: UPDATE THIS ACCORDINGLY
         environment_params={
