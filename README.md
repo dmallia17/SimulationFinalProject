@@ -18,7 +18,14 @@ understanding multiple trends and quantities with respect to the cats and their
 Simulation is conducted under an Agent Based Modeling (ABM) approach, making
 use of Python and the excellent ABM package, Mesa. We emphasize considerable
 temporal detail, making use of a 15 minute increment per step or tick in the
-simulation.
+simulation. We include use of 2 policies, so as to consider how humans might
+try to control the cat population:
+- No control: in other words, no actions are taken against the cats.
+- Removal: With a user-determined rate, cats are removed from the area.
+
+Below is an example of the visual interface for our simulation:
+![Simulation screenshot](Images/SimulationScreenshot.png)
+
 
 ## Setup
 This project assumes an installation of Python (>= 3.8.5) as well as the
