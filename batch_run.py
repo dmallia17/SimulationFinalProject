@@ -44,12 +44,12 @@ if __name__ == "__main__":
         help="Number of processes to use for batch running")
     parser.add_argument("--iterations", type=int, default=1,
         help="Number of times to run for each combination of parameters")
-    parser.add_argument("--data_collection_period", type=int, default=-1,
+    parser.add_argument("--data_collection_period", type=int, default=96,
         help="How many steps in between collection (-1 = only at end)")
     parser.add_argument("--max_steps", type=int, default=1000,
         help="How many steps to run the simulation")
     parser.add_argument("--no_display_progress", action="store_false")
-    parser.add_argument("--repro_iter", type=int, default=0,
+    parser.add_argument("--repro_iter", type=int, default=10,
         help="Use this to set how many unique seeds to use")
     parser.add_argument("--seed", type=int, default=1234,
         help="Seed for reproducibility")
